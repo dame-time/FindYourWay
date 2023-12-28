@@ -1,0 +1,95 @@
+#pragma once
+
+#include <Arduino.h>
+
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <PubSubClient.h>
+
+class MQTTClient {
+    private:
+        const char *aws_root_ca = R"(-----BEGIN CERTIFICATE-----
+MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF
+ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6
+b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL
+MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv
+b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj
+ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM
+9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw
+IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6
+VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L
+93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm
+jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC
+AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA
+A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI
+U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs
+N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv
+o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU
+5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy
+rqXRfboQnoZsG4q5WTP468SQvvG5
+-----END CERTIFICATE-----)";
+        const char *aws_certificate = R"(-----BEGIN CERTIFICATE-----
+MIIDWTCCAkGgAwIBAgIUciMzulgcMSuwitAsjA/BBBTsRsQwDQYJKoZIhvcNAQEL
+BQAwTTFLMEkGA1UECwxCQW1hem9uIFdlYiBTZXJ2aWNlcyBPPUFtYXpvbi5jb20g
+SW5jLiBMPVNlYXR0bGUgU1Q9V2FzaGluZ3RvbiBDPVVTMB4XDTIzMTIxMjEwMDQw
+MVoXDTQ5MTIzMTIzNTk1OVowHjEcMBoGA1UEAwwTQVdTIElvVCBDZXJ0aWZpY2F0
+ZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMkgz52e2l1Gp1wFkss7
+mZSRbldwgoYteQD5zdczqMA+9zWviWZnx0uXfQvl1fumbHfoopSCZ/ITPpIO5Z85
+vEcNlz95N6PO0xIj3ADf8lVRx1ucUh+dTezpAMla1Z/IRGseWjpM2npvurNiwKLA
+Dugi+apwmEiQgPiA/97VHMGgXOjHwarudR8uJovVSQEI8O1LE+ZaJbAD6DYQF2GA
+/lkrNaqRBFubtPZg5p+RohnktPGnRUXZA367SA+pQcc7QhNoqr1BZVTkTE+7XoRU
+PGzAo+58nAlPOetRgY2RgvPu23OtjBSvwfyOTzpm/w5Uuy5VjLsGiqiEkiSTHK9P
+dsECAwEAAaNgMF4wHwYDVR0jBBgwFoAUc0Z203gNmbz1kuZCp0c5qJsFSSEwHQYD
+VR0OBBYEFOUH91ydDOt3fQNGfmuXXsfeczZ+MAwGA1UdEwEB/wQCMAAwDgYDVR0P
+AQH/BAQDAgeAMA0GCSqGSIb3DQEBCwUAA4IBAQBUJq5DpzeqM1D/S3MBSJaJrthd
+WngapSPdCta+0qUZ67TlDYM4AfWK0oXVVRV0gh4iEyMd1fIEUkVI7AJU3U8DgQdg
+MAQq/E1HDvesrM+HybbiaKaDz1N/m/QHrbbekXx3v1K4bxLP7s1/t8vcjqr5uMOv
+sQoCsHVmx05RPOTVkSYObzVJn1BRgpvzPgZLaaxlyQ6r4lbtBXTu7BFfvBCNJpNh
+610+4ctsjVfaHqQOsyjtlC5bD75UdhcvDBwWbGI07lQQ0NSfi3XjHl2qMxgvAloJ
+J27WfyuBv2yhBvIbmej9SN2gNj4uEci7YZPEJ2Rl0+bmZr3TsRketE3hmGpb
+-----END CERTIFICATE-----)";
+        const char *aws_private_key = R"(-----BEGIN RSA PRIVATE KEY-----
+MIIEogIBAAKCAQEAySDPnZ7aXUanXAWSyzuZlJFuV3CChi15APnN1zOowD73Na+J
+ZmfHS5d9C+XV+6Zsd+iilIJn8hM+kg7lnzm8Rw2XP3k3o87TEiPcAN/yVVHHW5xS
+H51N7OkAyVrVn8hEax5aOkzaem+6s2LAosAO6CL5qnCYSJCA+ID/3tUcwaBc6MfB
+qu51Hy4mi9VJAQjw7UsT5lolsAPoNhAXYYD+WSs1qpEEW5u09mDmn5GiGeS08adF
+RdkDfrtID6lBxztCE2iqvUFlVORMT7tehFQ8bMCj7nycCU8561GBjZGC8+7bc62M
+FK/B/I5POmb/DlS7LlWMuwaKqISSJJMcr092wQIDAQABAoIBAB/l/keHXCaTABQO
+JjvpVfBEKHXhuDHDoH9RHx5UaR0kX1y6XFZLe0Y33nM2nnts56MU2EQpcoboGnJb
+vntEUuIJ+8TrWrG2Ka+k1E2nNu3lLHMRFc1By4wZYDCPIXZX8tHyXGkGq1fjxH6S
+2O52+2ZBtcscVGqd0HaZLvuOXSMwHWbzqLAOknu8Bryqx3EtkdDXucsZq7d8J6wu
+jnk4kgS6zYUgpFL784E6MGyKIN/rNqFJ5ypqU8YGvLuAEbXQ7B0bWPZ7D+IYqDTy
+rUJG481ruKgjMj2rypu0VQWP3U5LOuiQ831ZetVredHJl24qPBEYzhJE0XUlqrLA
+fMw+tuECgYEA/MDvF8HnytmCwhkp2SWhYK/9PWZ+wFGah02S8bpEx+BQ9TsvoU/B
+yrDFmE528wLmAQAVUk1MZj2jxzy17VVix1hMRrcPIrtFhiABPY9Ycda33Vj7PWhJ
+VAjPWvSPG5oFCSXoq0N4pgCcKVb//PHBnuFY8M7kwrAbAhhGG0XYwa0CgYEAy7Yh
+R9ebRExOk5Jnjhpub2w1yKMjyW9cJgj+iOp/Xy1qn812I3Y+iiNhCngN/U/vtu+i
+yNiw6eSSCpibnmK1HPDREltQyrlUb0DyLjvD7fJO99i/bUlwfO0G1k7NoDFC5tmR
+8Vxl2g2fUBKCN/U5jTgg7v8GjCup2YhOZVc/8+UCgYBztRc/dwNX969GkCJ6SCHS
+k36JB0zrWfA2FKs6gh1Oq0Ako82wOUTsN3Sdvv3xTdhhiNo57S0WeQ1q/j4Cwl4Q
+CDoS/WaubbDsL+aheefxZWySplONzxoSoF3cs6x35FB92Z7kGGU5CXpz6mISN9J9
+m4gN5YkQH3KdyOL/RUBvmQKBgCgIR6wFm9alJD/t4nnTieZNnpgqLyszvikfVV30
+r0k19KEo0FGRuCKPZ0+WXjFslxAdMaFErCeaqnR4nwRWI39nd76iwVLFbulaGv2o
+8wz8tDYSmzPP3dI/BjvxSolzhNE26m5DGSTrzmX+7SYwA7pT0G0HIvNC1WMRXU6f
+ActdAoGATx957QF/eTAMU9TNObaqfeka7asRWxqlqF4Wl9KbSijdRlVh8ddfi4YB
+SD5Tvem6p/FbAKINHOMMR2m3xz5LcLiGjtPh10mzub07jwLQu2NWg+xJblZX/syn
+y1INQKBXCtCsW06o0yZq2UPIyazpZKoY+aH3IcLsm3o9kZEf6qw=
+-----END RSA PRIVATE KEY-----)";
+
+        const char *ssid = "casa paolillo";
+        const char *password = "willer99";
+        const char *mqttServer = "a3od7l38m9ccdd-ats.iot.eu-west-2.amazonaws.com";
+        int mqttPort = 8883;
+        const char *mqttUser = nullptr;     
+        const char *mqttPassword = nullptr; 
+
+        WiFiClientSecure* espClient;
+        PubSubClient* client;
+
+
+    public:
+        MQTTClient();
+        
+        void publish(String topic, String message);
+        void loop();
+};
