@@ -1,0 +1,48 @@
+# Flutter
+.DS_Store
+build/
+ios/Pods/
+android/app/build/
+*.iml
+.idea/
+.vscode/
+*.flutter-plugins
+*.flutter-plugins-dependencies
+/.metadata
+/.idea
+/.gradle
+/captures/
+
+# C++
+.DS_Store
+build/
+*.o
+*.a
+*.exe
+
+# Arduino
+.DS_Store
+build/
+*.hex
+*.elf
+*.bin
+*.eep
+*.map
+*.lst
+*.sym
+*.lss
+*.tmp
+*.log
+*.csv
+
+# Flask
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.env
+*.log
+*.swp
+*.swo
+*.sqlite3
+instance/
